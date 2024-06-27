@@ -25,14 +25,14 @@ namespace Supplier_Screening_Server.Controllers
             _context = context;
         }
 
-        // GET: api/UsuarioControlador
+        // GET: user
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UsuarioEY>>> GetUsuarios()
         {
             return await _context.Usuarios.ToListAsync();
         }
 
-        // GET: api/UsuarioControlador/:id
+        // GET: user/:id
         [HttpGet("{id}")]
         public async Task<ActionResult<UsuarioEY>> GetUsuario(int id)
         {
@@ -51,7 +51,7 @@ namespace Supplier_Screening_Server.Controllers
             return usuario;
         }
 
-        // PUT: api/UsuarioControlador/:id
+        // PUT: user/:id
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, UsuarioCredentials usuario)
         {
@@ -109,7 +109,7 @@ namespace Supplier_Screening_Server.Controllers
             });
         }
 
-        // POST: api/UsuarioControlador
+        // POST: user
         [HttpPost]
         public async Task<ActionResult<UsuarioEY>> PostUsuario(UsuarioCredentials usuario)
         {
@@ -137,7 +137,7 @@ namespace Supplier_Screening_Server.Controllers
             });
         }
 
-        // DELETE: api/UsuarioControlador/:id
+        // DELETE: user/:id
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
@@ -162,7 +162,7 @@ namespace Supplier_Screening_Server.Controllers
             });
         }
 
-        // POST: auth
+        // POST: user/auth
         [HttpPost("auth")]
         public async Task<IActionResult> AuthenticateUsuario(AuthUsuario authentication)
         {

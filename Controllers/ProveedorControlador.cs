@@ -23,14 +23,129 @@ namespace Supplier_Screening_Server.Controllers
             _context = context;
         }
 
-        // GET: api/ProveedorControlador
+        // GET: supplier?sortBy=&sortDirection=&search=&razonSocial=&nombreComercial=&paisCodigo=&pageNumnber=&pageSize=
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedores()
+        public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedores(
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortDirection = "asc",
+            [FromQuery] string? search = null,
+            [FromQuery] string? razonSocial = null,
+            [FromQuery] string? nombreComercial = null,
+            [FromQuery] string? paisCodigo = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            return await _context.Proveedores.ToListAsync();
+            //Data Validation
+            pageNumber = pageNumber < 1 ? 1 : pageNumber;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+
+            var query = _context.Proveedores.AsQueryable();
+
+            /* For Applying Filters */
+            if (!string.IsNullOrEmpty(razonSocial))
+            {
+                query = query.Where(p => p.RazonSocial.Contains(razonSocial));
+            }
+
+            if (!string.IsNullOrEmpty(nombreComercial))
+            {
+                query = query.Where(p => p.NombreComercial.Contains(nombreComercial));
+            }
+
+            if (!string.IsNullOrEmpty(paisCodigo))
+            {
+                query = query.Where(p => p.PaisCodigo == paisCodigo);
+            }
+
+            /* For Applying Searching */
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(p => p.RazonSocial.Contains(search) ||
+                                         p.NombreComercial.Contains(search) ||
+                                         p.IdentificacionTributaria.Contains(search) ||
+                                         p.CorreoElectronico.Contains(search) ||
+                                         p.SitioWeb.Contains(search)||
+                                         p.DireccionFisica.Contains(search));
+            }
+
+            /* For Applying Sorting */
+            switch (sortBy?.ToLower())
+            {
+                case "razonsocial":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.RazonSocial)
+                        : query.OrderBy(p => p.RazonSocial);
+                    break;
+                case "nombrecomercial":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.NombreComercial)
+                        : query.OrderBy(p => p.NombreComercial);
+                    break;
+                case "identificaciontributaria":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.IdentificacionTributaria)
+                        : query.OrderBy(p => p.IdentificacionTributaria);
+                    break;
+                case "numerotelefonico":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.NumeroTelefonico)
+                        : query.OrderBy(p => p.NumeroTelefonico);
+                    break;
+                case "correoelectronico":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.CorreoElectronico)
+                        : query.OrderBy(p => p.CorreoElectronico);
+                    break;
+                case "sitioweb":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.SitioWeb)
+                        : query.OrderBy(p => p.SitioWeb);
+                    break;
+                case "direccionfisica":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.DireccionFisica)
+                        : query.OrderBy(p => p.DireccionFisica);
+                    break;
+                case "paiscodigo":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.PaisCodigo)
+                        : query.OrderBy(p => p.PaisCodigo);
+                    break;
+                case "facturacionanual":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.FacturacionAnual)
+                        : query.OrderBy(p => p.FacturacionAnual);
+                    break;
+                default:
+                    query = query.OrderByDescending(p => p.FechaUltimaEdicion);
+                    break;
+            }
+
+            /* Global validation for active*/
+            query = query.Where(p => p.Activo);
+
+            /* Pagination */
+            var totalItems = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+            var proveedoresList = await query
+                                       .Skip((pageNumber - 1) * pageSize)
+                                       .Take(pageSize)
+                                       .ToListAsync();
+
+            var pageQuery = new
+            {
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Data = proveedoresList
+            };
+
+            return Ok(pageQuery);
         }
 
-        // GET: api/ProveedorControlador/:id
+        // GET: supplier/:id
         [HttpGet("{id}")]
         public async Task<ActionResult<Proveedor>> GetProveedor(int id)
         {
@@ -49,7 +164,7 @@ namespace Supplier_Screening_Server.Controllers
             return proveedor;
         }
 
-        // PUT: api/ProveedorControlador/:id
+        // PUT: supplier/:id
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProveedor(int id, Proveedor proveedor)
         {
@@ -106,7 +221,7 @@ namespace Supplier_Screening_Server.Controllers
             });
         }
 
-        // POST: api/ProveedorControlador
+        // POST: supplier
         [HttpPost]
         public async Task<ActionResult<Proveedor>> PostProveedor(Proveedor proveedor)
         {
@@ -135,7 +250,7 @@ namespace Supplier_Screening_Server.Controllers
             });
         }
 
-        // DELETE: api/ProveedorControlador/:id
+        // DELETE: supplier/:id
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProveedor(int id)
         {

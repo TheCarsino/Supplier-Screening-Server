@@ -22,14 +22,14 @@ namespace Supplier_Screening_Server.Controllers
             _context = context;
         }
 
-        // GET: api/PaisControlador
+        // GET: country
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Pais>>> GetPaises()
         {
             return await _context.Paises.ToListAsync();
         }
 
-        // GET: api/PaisControlador/:code
+        // GET: country/:code
         [HttpGet("{code}")]
         public async Task<ActionResult<Pais>> GetPais(string code)
         {
