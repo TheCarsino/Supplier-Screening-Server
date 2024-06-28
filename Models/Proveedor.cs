@@ -97,4 +97,15 @@ namespace Supplier_Screening_Server.Models
         public decimal? FacturacionAnual { get; set; }
 
     }
+
+    public class ProveedorScreenParams
+    {
+        [Required]
+        [MaxLength(255)]
+        public string name { get; set; }
+
+        public bool offshoreLeaks { get; set; } = false;
+        public bool worldBank { get; set; } = false;
+        public bool OFACSanctions { get; set; } = false;
+    }
 }

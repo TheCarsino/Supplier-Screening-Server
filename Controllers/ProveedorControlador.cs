@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,10 +20,16 @@ namespace Supplier_Screening_Server.Controllers
     public class ProveedorControlador : ControllerBase
     {
         private readonly APIDBContext _context;
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
 
-        public ProveedorControlador(APIDBContext context)
+
+        public ProveedorControlador(APIDBContext context, HttpClient httpClient, IConfiguration configuration)
         {
             _context = context;
+            _httpClient = httpClient;
+            _configuration = configuration;
+
         }
 
         // GET: supplier?sortBy=&sortDirection=&search=&businessName=&commercialName=&countryCode=&beforeDate=&afterDate=&pageNumnber=&pageSize=
@@ -138,8 +147,8 @@ namespace Supplier_Screening_Server.Controllers
                     break;
                 case "last modification":
                     query = sortDirection == "desc"
-                        ? query.OrderByDescending(p => p.FacturacionAnual)
-                        : query.OrderBy(p => p.FacturacionAnual);
+                        ? query.OrderByDescending(p => p.FechaUltimaEdicion)
+                        : query.OrderBy(p => p.FechaUltimaEdicion);
                     break;
                 default:
                     query = query.OrderByDescending(p => p.FechaUltimaEdicion);
@@ -317,6 +326,45 @@ namespace Supplier_Screening_Server.Controllers
                 message = "The supplier with the specified ID was eliminated.",
                 status = 200,
             });
+        }
+
+        [HttpPost("screening")]
+        public async Task<IActionResult> SupplierScreening(ProveedorScreenParams proveedorscreen)
+        {
+            var apiUser = _configuration.GetValue<string>("AppSettings:ApiUser");
+            var apiPassword = _configuration.GetValue<string>("AppSettings:ApiPassword");
+            var baseUrl = _configuration.GetValue<string>("AppSettings:ApiUrl");
+
+            var requestUrl = baseUrl + "/entity/risklist";
+
+            try
+            {
+                var json = JsonSerializer.Serialize(proveedorscreen);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var authHeaderValue = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{apiUser}:{apiPassword}"));
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeaderValue);
+
+                var response = await _httpClient.PostAsync(requestUrl, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    var jsonDocument = JsonDocument.Parse(jsonString);
+
+                    return Ok(jsonDocument.RootElement);
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, new { message = "Error retrieving data from external API." });
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                return StatusCode(500, new { message = $"Request error: {ex.Message}" });
+            }
+
         }
 
         private bool ProveedorExists(int id)

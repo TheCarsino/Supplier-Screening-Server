@@ -8,7 +8,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Get the connectionString of Database to be used for the DbContext EF library
 var connectionString = builder.Configuration.GetConnectionString("Connection");
+var apiUser = builder.Configuration.GetValue<string>("AppSettings:ApiUser");
+var apiPassword = builder.Configuration.GetValue<string>("AppSettings:ApiPassword");
+var apiUrl = builder.Configuration.GetValue<string>("AppSettings:ApiUrl");
+
+
+
 builder.Services.AddDbContext<APIDBContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddHttpClient();
 
 builder.Services.AddCors(options =>
 {
