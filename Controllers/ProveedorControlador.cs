@@ -23,15 +23,17 @@ namespace Supplier_Screening_Server.Controllers
             _context = context;
         }
 
-        // GET: supplier?sortBy=&sortDirection=&search=&razonSocial=&nombreComercial=&paisCodigo=&pageNumnber=&pageSize=
+        // GET: supplier?sortBy=&sortDirection=&search=&businessName=&commercialName=&countryCode=&beforeDate=&afterDate=&pageNumnber=&pageSize=
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedores(
             [FromQuery] string? sortBy = null,
             [FromQuery] string? sortDirection = "asc",
             [FromQuery] string? search = null,
-            [FromQuery] string? razonSocial = null,
-            [FromQuery] string? nombreComercial = null,
-            [FromQuery] string? paisCodigo = null,
+            [FromQuery] string? businessName = null,
+            [FromQuery] string? commercialName = null,
+            [FromQuery] string? countryCode = null,
+            [FromQuery] string? beforeDate = null,
+            [FromQuery] string? afterDate = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -43,21 +45,33 @@ namespace Supplier_Screening_Server.Controllers
             var query = _context.Proveedores.AsQueryable();
 
             /* For Applying Filters */
-            if (!string.IsNullOrEmpty(razonSocial))
+            if (!string.IsNullOrEmpty(businessName))
             {
-                query = query.Where(p => p.RazonSocial.Contains(razonSocial));
+                query = query.Where(p => p.RazonSocial.Contains(businessName));
             }
 
-            if (!string.IsNullOrEmpty(nombreComercial))
+            if (!string.IsNullOrEmpty(commercialName))
             {
-                query = query.Where(p => p.NombreComercial.Contains(nombreComercial));
+                query = query.Where(p => p.NombreComercial.Contains(commercialName));
             }
 
-            if (!string.IsNullOrEmpty(paisCodigo))
+            if (!string.IsNullOrEmpty(countryCode))
             {
-                query = query.Where(p => p.PaisCodigo == paisCodigo);
+                query = query.Where(p => p.PaisCodigo == countryCode);
             }
 
+            string dateFormat = "MM/dd/yyyy";
+
+            if (DateTime.TryParseExact(beforeDate, dateFormat, null, System.Globalization.DateTimeStyles.None, out DateTime beforeDateTime))
+            {
+                query = query.Where(p => p.FechaUltimaEdicion.Date < beforeDateTime.Date);
+            }
+
+
+            if (DateTime.TryParseExact(afterDate, dateFormat, null, System.Globalization.DateTimeStyles.None, out DateTime afterDateTime))
+            {
+                query = query.Where(p => p.FechaUltimaEdicion.Date > afterDateTime.Date);
+            }
             /* For Applying Searching */
             if (!string.IsNullOrEmpty(search))
             {
@@ -70,49 +84,59 @@ namespace Supplier_Screening_Server.Controllers
             }
 
             /* For Applying Sorting */
-            switch (sortBy?.ToLower())
+            switch (sortBy?.ToLower().Trim())
             {
-                case "razonsocial":
+                case "id":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.Id)
+                        : query.OrderBy(p => p.Id);
+                    break;
+                case "business name":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.RazonSocial)
                         : query.OrderBy(p => p.RazonSocial);
                     break;
-                case "nombrecomercial":
+                case "ommercial name":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.NombreComercial)
                         : query.OrderBy(p => p.NombreComercial);
                     break;
-                case "identificaciontributaria":
+                case "taxpayer id":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.IdentificacionTributaria)
                         : query.OrderBy(p => p.IdentificacionTributaria);
                     break;
-                case "numerotelefonico":
+                case "phone":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.NumeroTelefonico)
                         : query.OrderBy(p => p.NumeroTelefonico);
                     break;
-                case "correoelectronico":
+                case "email":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.CorreoElectronico)
                         : query.OrderBy(p => p.CorreoElectronico);
                     break;
-                case "sitioweb":
+                case "website domain":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.SitioWeb)
                         : query.OrderBy(p => p.SitioWeb);
                     break;
-                case "direccionfisica":
+                case "address":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.DireccionFisica)
                         : query.OrderBy(p => p.DireccionFisica);
                     break;
-                case "paiscodigo":
+                case "country":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.PaisCodigo)
                         : query.OrderBy(p => p.PaisCodigo);
                     break;
-                case "facturacionanual":
+                case "annual turnover":
+                    query = sortDirection == "desc"
+                        ? query.OrderByDescending(p => p.FacturacionAnual)
+                        : query.OrderBy(p => p.FacturacionAnual);
+                    break;
+                case "last modification":
                     query = sortDirection == "desc"
                         ? query.OrderByDescending(p => p.FacturacionAnual)
                         : query.OrderBy(p => p.FacturacionAnual);
@@ -166,17 +190,8 @@ namespace Supplier_Screening_Server.Controllers
 
         // PUT: supplier/:id
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProveedor(int id, Proveedor proveedor)
+        public async Task<IActionResult> PutProveedor(int id, ModProveedor proveedor)
         {
-            if (id != proveedor.Id)
-            {
-                return BadRequest(new ErrorValidResponse
-                {
-                    title = "One or more validation errors occurred.",
-                    status = 400,
-                    errors = new { IdChanged = "The provided Id does not match the router parameter :id - " + id }
-                });
-            }
 
             if (!paisExists(proveedor.PaisCodigo))
             {
@@ -188,7 +203,21 @@ namespace Supplier_Screening_Server.Controllers
                 });
             }
 
-            _context.Entry(proveedor).State = EntityState.Modified;
+            Proveedor updateProveedor = new Proveedor
+            {
+                Id=id,
+                RazonSocial = proveedor.RazonSocial,
+                NombreComercial = proveedor.NombreComercial,
+                IdentificacionTributaria = proveedor.IdentificacionTributaria,
+                NumeroTelefonico = proveedor.NumeroTelefonico,
+                CorreoElectronico = proveedor.CorreoElectronico,
+                SitioWeb = proveedor.SitioWeb,
+                DireccionFisica = proveedor.DireccionFisica,
+                PaisCodigo = proveedor.PaisCodigo,
+                FacturacionAnual = proveedor.FacturacionAnual,
+            };
+
+            _context.Entry(updateProveedor).State = EntityState.Modified;
 
             try
             {
@@ -223,7 +252,7 @@ namespace Supplier_Screening_Server.Controllers
 
         // POST: supplier
         [HttpPost]
-        public async Task<ActionResult<Proveedor>> PostProveedor(Proveedor proveedor)
+        public async Task<ActionResult<Proveedor>> PostProveedor(ModProveedor proveedor)
         {
             if (!paisExists(proveedor.PaisCodigo))
             {
@@ -235,11 +264,24 @@ namespace Supplier_Screening_Server.Controllers
                 });
             }
 
+            Proveedor newProveedor = new Proveedor
+            {
+                RazonSocial = proveedor.RazonSocial,
+                NombreComercial = proveedor.NombreComercial,
+                IdentificacionTributaria = proveedor.IdentificacionTributaria,
+                NumeroTelefonico = proveedor.NumeroTelefonico,
+                CorreoElectronico = proveedor.CorreoElectronico,
+                SitioWeb = proveedor.SitioWeb,
+                DireccionFisica = proveedor.DireccionFisica,
+                PaisCodigo = proveedor.PaisCodigo,
+                FacturacionAnual = proveedor.FacturacionAnual,
+            };
 
-            _context.Proveedores.Add(proveedor);
+
+            _context.Proveedores.Add(newProveedor);
             await _context.SaveChangesAsync();
 
-            var valueCreation = CreatedAtAction("GetProveedor", new { id = proveedor.Id }, proveedor);
+            var valueCreation = CreatedAtAction("GetProveedor", new { id = newProveedor.Id }, newProveedor);
             var createdObject = valueCreation == null ? null: valueCreation.Value;
 
             return Ok(new SuccessResponse
@@ -265,7 +307,9 @@ namespace Supplier_Screening_Server.Controllers
                 });
             }
 
-            _context.Proveedores.Remove(proveedor);
+            proveedor.Activo = false;
+
+            _context.Proveedores.Update(proveedor);
             await _context.SaveChangesAsync();
 
             return Ok(new SuccessResponse
@@ -280,9 +324,9 @@ namespace Supplier_Screening_Server.Controllers
             return _context.Proveedores.Any(e => e.Id == id);
         }
 
-        private bool paisExists(string paisCodigo)
+        private bool paisExists(string countryCode)
         {
-            return _context.Paises.Any(p => p.Codigo == paisCodigo);
+            return _context.Paises.Any(p => p.Codigo == countryCode);
         }
     }
 }

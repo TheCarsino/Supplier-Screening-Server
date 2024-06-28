@@ -20,6 +20,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new CustomDateTimeConverter("MM/dd/yyyy HH:mm:ss"));
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
